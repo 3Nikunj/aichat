@@ -12,29 +12,31 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
-  useEffect(() => {
-    checkUser();
+  const loadHistory = useCallback(async () => {
+    const res = await api.get("/api/chat/history");
+    setMessages(res.data);
   }, []);
 
   const checkUser = useCallback(async () => {
     const res = await api.get("/api/auth/me");
+
     if (res.data) {
       setUser(res.data);
-      loadHistory();
+      await loadHistory();
     }
-  }, []); 
+  }, [loadHistory]);
 
   useEffect(() => {
     checkUser();
   }, [checkUser]);
 
-  const register = useCallback(async () => {
+  const register = async () => {
     await api.post("/api/auth/register", { username, password });
     alert("Registered. Now login.");
     setIsRegister(false);
-  }, []);
+  };
 
-  const login = useCallback(async () => {
+  const login = async () => {
     const formData = new URLSearchParams();
     formData.append("username", username);
     formData.append("password", password);
@@ -43,25 +45,16 @@ function App() {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
 
-    checkUser();
-  }, []);
+    await checkUser();
+  };
 
-  const logout = useCallback(async () => {
+  const logout = async () => {
     await api.post("/api/auth/logout");
     setUser(null);
     setMessages([]);
-  }, []);
+  };
 
-  const loadHistory = useCallback(async () => {
-    const res = await api.get("/api/chat/history");
-    setMessages(res.data);
-  }, []);
-
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
-
-  const sendMessage = useCallback(async () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
 
     const userText = input;
@@ -80,15 +73,7 @@ function App() {
       ...prev,
       { role: "assistant", content: res.data.reply },
     ]);
-  }, []);
-
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
-
-  useEffect(() => {
-    sendMessage();
-  }, [sendMessage]);
+  };
 
   if (!user) {
     return (
