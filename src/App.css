@@ -50,6 +50,14 @@ body {
   background: #f7f7f8;
 }
 
+.chat-error {
+  margin: 0;
+  padding: 10px 20px;
+  color: #b00020;
+  background: #fff0f3;
+  border-bottom: 1px solid #ffd6df;
+}
+
 .messages {
   flex: 1;
   padding: 20px;

@@ -22,12 +22,19 @@ function App() {
     try {
       const res = await api.get(`${API_BASE_URL}/api/auth/me`);
 
-      if (res.data) {
+      if (res.data?.username) {
         setUser(res.data);
         await loadHistory();
+        return true;
       }
+
+      setUser(null);
+      setMessages([]);
+      return false;
     } catch {
       setUser(null);
+      setMessages([]);
+      return false;
     }
   }, [loadHistory]);
 
@@ -60,7 +67,13 @@ function App() {
         withCredentials: true,
       });
 
-      await checkUser();
+      const isLoggedIn = await checkUser();
+
+      if (!isLoggedIn) {
+        setError(
+          "Login succeeded, but the browser did not receive a valid session. Check backend /api/auth/me and cookie settings."
+        );
+      }
     } catch (err) {
       setError(
         err.response?.status === 401
@@ -87,14 +100,31 @@ function App() {
       { role: "user", content: userText },
     ]);
 
-    const res = await api.post(`${API_BASE_URL}/api/chat`, {
-      message: userText,
-    });
+    try {
+      const res = await api.post(`${API_BASE_URL}/api/chat/response`, {
+        message: userText,
+      });
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "assistant", content: res.data.reply },
-    ]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: res.data.reply },
+      ]);
+    } catch (err) {
+      setMessages((prev) => prev.filter((msg) => msg.content !== userText));
+
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setUser(null);
+        setError("Your login session expired. Please login again.");
+        return;
+      }
+
+      if (err.response?.status === 404) {
+        setError("Chat API was not found on the deployed backend.");
+        return;
+      }
+
+      setError("Message failed. Check the backend chat endpoint.");
+    }
   };
 
   if (!user) {
@@ -139,6 +169,8 @@ function App() {
       </div>
 
       <div className="chat-area">
+        {error && <p className="chat-error">{error}</p>}
+
         <div className="messages">
           {messages.map((msg, index) => (
             <div key={index} className={`message ${msg.role}`}>
